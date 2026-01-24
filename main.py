@@ -8,7 +8,7 @@ import os  # Ez kell a környezeti változókhoz
 
 # --- KONFIGURÁCIÓ ---
 # Railway-en a Variables fülre írd be ezeket, vagy hagyd itt, ha nem félted
-TOKEN = "MTQ1NzI5NjcxNjE0NjQxMzU3OA.GyBdDb.pReaKiAToRR13H1pbm0xNktHjZVOh2RPSl0FMo"
+TOKEN = "MTQ1NzI5NjcxNjE0NjQxMzU3OA.GBRyMr.y9EMSbdls4O0PWK6M7J_-xVhaGSwfWOuDkp7wc"
 CHANNEL_ID = 1464610272718094514
 SEARCH_TERM = "nike" 
 MAX_PRICE = 45000     
