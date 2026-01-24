@@ -75,7 +75,7 @@ class VintedBot(discord.Client):
                         stars = "⭐" * int(round(rating * 5)) if rating else "Nincs értékelés"
 
                         embed = discord.Embed(title=f"{flag} {item.get('title')}", url=url, color=0x00ff00)
-                        embed.set_description(f"✨ **Állapot:** {status}")
+                        embed.description = f"✨ **Állapot:** {status}"
                         
                         embed.add_field(name="📏 Méret", value=size, inline=True)
                         embed.add_field(name="🏷️ Márka", value=brand, inline=True)
