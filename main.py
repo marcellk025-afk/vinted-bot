@@ -34,7 +34,7 @@ class VintedBot(discord.Client):
     async def on_ready(self):
         print(f"--- {self.user} BEJELENTKEZVE ---")
 
-    @tasks.loop(seconds=45) # Itt vettem lejjebb az időt 30 másodpercre
+    @tasks.loop(seconds=60) # Itt vettem lejjebb az időt 30 másodpercre
     async def monitor(self):
         channel = self.get_channel(CHANNEL_ID)
         if not channel or not TOKEN: return
