@@ -2,9 +2,9 @@ import discord
 from discord.ext import tasks
 from discord.ui import Button, View
 import requests
-import os  # Ez szükséges a titkos adatok beolvasásához
+import os
 
-# --- KONFIGURÁCIÓ A RAILWAY-RŐL ---
+# --- KONFIGURÁCIÓ A RAILWAY VARIABLES FÜLRŐL ---
 TOKEN = os.getenv("TOKEN")
 CHANNEL_ID = int(os.getenv("CHANNEL_ID")) if os.getenv("CHANNEL_ID") else 0
 SEARCH_TERM = "nike" 
@@ -34,7 +34,7 @@ class VintedBot(discord.Client):
     async def on_ready(self):
         print(f"--- {self.user} BEJELENTKEZVE ---")
 
-    @tasks.loop(seconds=60)
+    @tasks.loop(seconds=30) # Itt vettem lejjebb az időt 30 másodpercre
     async def monitor(self):
         channel = self.get_channel(CHANNEL_ID)
         if not channel or not TOKEN: return
@@ -59,11 +59,23 @@ class VintedBot(discord.Client):
                         currency = item.get('currency', 'HUF')
                         flag = "🇭🇺" if currency == "HUF" else "🇵🇱"
                         
+                        # --- EMRED LÉTREHOZÁSA (KÉP SZERINT) ---
                         embed = discord.Embed(title=f"{flag} {item.get('title')}", url=url, color=0x00a8ff)
-                        if item.get('photo'): embed.set_image(url=item['photo'].get('url'))
+                        embed.description = f"{item.get('description', 'Nincs leírás...')[:150]}"
+                        
+                        embed.add_field(name="📅 Frissítve", value="Éppen most", inline=True)
+                        embed.add_field(name="📏 Méret", value=item.get('size_title', 'Nincs'), inline=True)
+                        embed.add_field(name="🏷️ Márka", value=item.get('brand_title', 'Nike'), inline=True)
+                        embed.add_field(name="💰 Ár", value=f"**{price} {currency}**", inline=False)
 
+                        if item.get('photo'): 
+                            embed.set_image(url=item['photo'].get('url'))
+
+                        # --- GOMBOK LÉTREHOZÁSA (KÉP SZERINT) ---
                         view = View()
-                        view.add_item(Button(label="Megtekintés", url=url, style=discord.ButtonStyle.link))
+                        view.add_item(Button(label="Megtekintés", url=url, style=discord.ButtonStyle.link, emoji="🔗"))
+                        view.add_item(Button(label="Vásárlás", url=url, style=discord.ButtonStyle.link, emoji="💸"))
+                        view.add_item(Button(label="Ajánlat", url=url, style=discord.ButtonStyle.link, emoji="📩"))
 
                         await channel.send(embed=embed, view=view)
                     seen_ids.add(item_id)
@@ -74,5 +86,3 @@ client = VintedBot(intents=intents)
 
 if TOKEN:
     client.run(TOKEN)
-else:
-    print("HIBA: Nincs megadva TOKEN a Railway Variables fülön!")
