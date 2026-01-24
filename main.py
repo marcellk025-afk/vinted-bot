@@ -23,9 +23,7 @@ class VintedBot(discord.Client):
         self.monitor.start()
 
     def get_vinted_data(self):
-        # Kiírjuk a logba, hogy éppen lekérdezünk
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] Keresés futtatása a Vinteden...")
-        
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] 🔍 Vinted lekérdezés indítása...")
         ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
         headers = {"User-Agent": ua, "Accept": "application/json, text/plain, */*", "Referer": "https://www.vinted.hu/"}
         url = f"https://www.vinted.hu/api/v2/catalog/items?search_text={SEARCH_TERM}&order=newest_first&countries[]=16&countries[]=24"
@@ -33,17 +31,13 @@ class VintedBot(discord.Client):
             self.session.cookies.clear()
             self.session.get("https://www.vinted.hu", headers=headers, timeout=10)
             res = self.session.get(url, headers=headers, timeout=10)
-            if res.status_code == 200:
-                print(f"[{datetime.now().strftime('%H:%M:%S')}] Sikeres válasz érkezett.")
-            else:
-                print(f"[{datetime.now().strftime('%H:%M:%S')}] HIBA: Vinted kód {res.status_code}")
             return res
         except Exception as e: 
-            print(f"Hiba a lekérdezés alatt: {e}")
+            print(f"❌ Hiba: {e}")
             return None
 
     async def on_ready(self):
-        print(f"--- {self.user} BEJELENTKEZVE ---")
+        print(f"--- {self.user} ONLINE ÉS FIGYEL ---")
 
     @tasks.loop(seconds=60)
     async def monitor(self):
@@ -51,19 +45,17 @@ class VintedBot(discord.Client):
         if not channel or not TOKEN: return
 
         response = self.get_vinted_data()
-        
         if response and response.status_code == 200:
             items = response.json().get('items', [])
-            
-            # Első futásnál csak elmentjük a meglévőket
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] ✅ Sikeres válasz, {len(items)} termék ellenőrzése...")
+
             if self.first_run:
                 for item in items: seen_ids.add(item.get('id'))
                 self.first_run = False
-                print("Alapállapot elmentve, várakozás az új hirdetésekre...")
+                print(">>> Alapállapot kész. Mostantól jönnek az értesítések!")
                 return
 
-            new_found = 0
-            for item in items[:5]:
+            for item in items[:10]:
                 item_id = item.get('id')
                 if item_id not in seen_ids:
                     raw_p = item.get('price')
@@ -74,18 +66,33 @@ class VintedBot(discord.Client):
                         currency = item.get('currency', 'HUF')
                         flag = "🇭🇺" if currency == "HUF" else "🇵🇱"
                         
-                        embed = discord.Embed(title=f"{flag} {item.get('title')}", url=url, color=0x00a8ff)
+                        # --- EXTRA INFÓK ---
+                        brand = item.get('brand_title', 'Ismeretlen')
+                        size = item.get('size_title', 'Nincs megadva')
+                        # Állapot és Csillagok kinyerése
+                        status = item.get('status', 'Nincs infó')
+                        rating = item.get('user', {}).get('feedback_reputation', 0)
+                        stars = "⭐" * int(round(rating * 5)) if rating else "Nincs értékelés"
+
+                        embed = discord.Embed(title=f"{flag} {item.get('title')}", url=url, color=0x00ff00)
+                        embed.set_description(f"✨ **Állapot:** {status}")
+                        
+                        embed.add_field(name="📏 Méret", value=size, inline=True)
+                        embed.add_field(name="🏷️ Márka", value=brand, inline=True)
+                        embed.add_field(name="👤 Eladó", value=stars, inline=True)
                         embed.add_field(name="💰 Ár", value=f"**{price} {currency}**", inline=False)
+
                         if item.get('photo'): embed.set_image(url=item['photo'].get('url'))
 
                         view = View()
-                        view.add_item(Button(label="Megtekintés", url=url, style=discord.ButtonStyle.link))
+                        view.add_item(Button(label="Megtekintés", url=url, style=discord.ButtonStyle.link, emoji="🔗"))
+                        view.add_item(Button(label="Vásárlás", url=url, style=discord.ButtonStyle.link, emoji="💸"))
+                        
                         await channel.send(embed=embed, view=view)
-                        new_found += 1
+                        print(f"🚀 ÚJ TALÁLAT: {item.get('title')}")
                     seen_ids.add(item_id)
-            
-            if new_found == 0:
-                print("Nincs új hirdetés a megadott feltételekkel.")
+        else:
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️ Vinted nem válaszol (Kód: {response.status_code if response else 'Nincs'})")
 
 intents = discord.Intents.default()
 intents.message_content = True 
