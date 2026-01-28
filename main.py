@@ -39,7 +39,7 @@ class VintedBot(discord.Client):
     async def on_ready(self):
         print(f"--- {self.user} ONLINE ÉS FIGYEL ---")
 
-    @tasks.loop(seconds=80)
+    @tasks.loop(seconds=100)
     async def monitor(self):
         channel = self.get_channel(CHANNEL_ID)
         if not channel or not TOKEN: return
