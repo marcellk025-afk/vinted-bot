@@ -3,11 +3,14 @@ from discord.ext import tasks
 from discord.ui import Button, View
 import requests
 import os
+import random
+import asyncio
 from datetime import datetime
 
 # --- KONFIGURÁCIÓ ---
 TOKEN = os.getenv("TOKEN")
-CHANNEL_ID = int(os.getenv("CHANNEL_ID")) if os.getenv("CHANNEL_ID") else 0
+# IDE ÍRD BE A CSATORNÁK ID-IT VESSZŐVEL ELVÁLASZTVA:
+CHANNEL_IDS = [1464610272718094514, 1457326368621596782] 
 SEARCH_TERM = "nike" 
 MAX_PRICE = 45000     
 
@@ -39,10 +42,12 @@ class VintedBot(discord.Client):
     async def on_ready(self):
         print(f"--- {self.user} ONLINE ÉS FIGYEL ---")
 
-    @tasks.loop(seconds=101)
+    @tasks.loop(seconds=95) # Alapidő: kb. 1.5 perc
     async def monitor(self):
-        channel = self.get_channel(CHANNEL_ID)
-        if not channel or not TOKEN: return
+        # Véletlenszerű várakozás (Anti-Ban Jitter)
+        await asyncio.sleep(random.uniform(1, 15))
+        
+        if not TOKEN: return
 
         response = self.get_vinted_data()
         if response and response.status_code == 200:
@@ -66,10 +71,8 @@ class VintedBot(discord.Client):
                         currency = item.get('currency', 'HUF')
                         flag = "🇭🇺" if currency == "HUF" else "🇵🇱"
                         
-                        # --- EXTRA INFÓK ---
                         brand = item.get('brand_title', 'Ismeretlen')
                         size = item.get('size_title', 'Nincs megadva')
-                        # Állapot és Csillagok kinyerése
                         status = item.get('status', 'Nincs infó')
                         rating = item.get('user', {}).get('feedback_reputation', 0)
                         stars = "⭐" * int(round(rating * 5)) if rating else "Nincs értékelés"
@@ -88,11 +91,20 @@ class VintedBot(discord.Client):
                         view.add_item(Button(label="Megtekintés", url=url, style=discord.ButtonStyle.link, emoji="🔗"))
                         view.add_item(Button(label="Vásárlás", url=url, style=discord.ButtonStyle.link, emoji="💸"))
                         
-                        await channel.send(embed=embed, view=view)
-                        print(f"🚀 ÚJ TALÁLAT: {item.get('title')}")
+                        # KÜLDÉS MINDEN CSATORNÁBA
+                        for channel_id in CHANNEL_IDS:
+                            channel = self.get_channel(channel_id)
+                            if channel:
+                                try:
+                                    await channel.send(embed=embed, view=view)
+                                except Exception as e:
+                                    print(f"Küldési hiba a(z) {channel_id} csatornán: {e}")
+                        
+                        print(f"🚀 ÚJ TALÁLAT BEKÜLDVE: {item.get('title')}")
                     seen_ids.add(item_id)
         else:
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️ Vinted nem válaszol (Kód: {response.status_code if response else 'Nincs'})")
+            status = response.status_code if response else "Nincs"
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️ Vinted hiba (Kód: {status})")
 
 intents = discord.Intents.default()
 intents.message_content = True 
